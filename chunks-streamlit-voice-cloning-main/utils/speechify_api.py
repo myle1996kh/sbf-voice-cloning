@@ -16,15 +16,21 @@ def get_voice_id(name, audio_file_path):
     return None
 
 def generate_audio_from_text(text, voice_id, user_id, file_name, emotion=None, rate="medium"):
+    """
+    Gửi văn bản (dưới 2000 ký tự) đến Speechify Speech API (cũ) có hỗ trợ SSML cơ bản
+    và nhận về file audio được decode từ base64.
+    """
+    API_KEY = os.getenv("SPEECHIFY_API_KEY")
+
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
 
-    # Escape the input text to prevent XML issues
+    # Escape ký tự đặc biệt
     safe_text = xml_escape.escape(text)
 
-    # Construct SSML with emotion and cadence inside <speechify:style>
+    # Tạo cấu trúc SSML (Speechify hỗ trợ emotion & rate qua thẻ <speechify:style>)
     if emotion:
         ssml = (
             f'<speak xmlns:speechify="http://www.speechify.com/ssml">'
@@ -35,14 +41,12 @@ def generate_audio_from_text(text, voice_id, user_id, file_name, emotion=None, r
         )
     else:
         ssml = f"<speak>{safe_text}</speak>"
-    
-        
 
     data = {
         "input": ssml,
         "voice_id": voice_id,
         "audio_format": "mp3",
-        "ssml": True  # Crucial to activate SSML processing
+        "ssml": True
     }
 
     response = requests.post("https://api.sws.speechify.com/v1/audio/speech", headers=headers, json=data)

@@ -21,6 +21,7 @@ from utils.github_utils import upload_excel_to_github
 from utils.audio_processing import combine_voice_and_music
 from streamlit_option_menu import option_menu
 import streamlit_authenticator as stauth
+from utils.generate_sample_stream import generate_sample_stream
 
 # --- Authentication Setup ---
 hashed_passwords = stauth.Hasher(["1234", "Chunks123"]).generate()
@@ -103,30 +104,76 @@ if selected.startswith("📤 Upload Voice"):
             st.error("❌ Failed to get voice ID from Speechify.")
 
 # --- Block 2: Generate Audio ---
+
 elif selected.startswith("🗣️ Generate Audio"):
     st.header("🗣️ Generate Audio from Text")
+
     users = load_existing_users()
     selected_user = st.selectbox("Select User", list(users.keys()))
-    emotion = None
-    rate = 0
-    custom_text = st.text_area("Text to convert (optional)")
-    uploaded_excel = st.file_uploader("Excel with texts (optional)", type=["xlsx"])
 
+    custom_text = st.text_area("Text to convert (optional)", max_chars=2000)
+    uploaded_excel = st.file_uploader("Excel with texts (optional)", type=["xlsx"])
     st.download_button("Download Excel Template", save_text_template(), file_name="Text_Template.xlsx")
 
-    if st.button("Generate Audio"):
+    # SSML Parameters
+    st.subheader("🔧 Optional SSML Settings (Only for Sample)")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        rate = st.selectbox("Speech Rate", ["x-slow", "slow", "medium", "fast", "x-fast"], index=2)
+        pitch = st.selectbox("Pitch", ["x-low", "low", "medium", "high", "x-high"], index=2)
+    with col2:
+        volume = st.selectbox("Volume", ["silent", "x-soft", "soft", "medium", "loud", "x-loud"], index=3)
+        emotion = st.selectbox("Emotion", ["neutral", "happy", "sad", "excited"], index=0)
+    with col3:
+        intensity = st.selectbox("Emotion Intensity", ["low", "medium", "high"], index=1)
+
+    # Main Button Row
+    colA, colB = st.columns(2)
+    with colA:
+        gen_podcast = st.button("🎧 Generate Podcast (Standard)")
+    with colB:
+        gen_sample = st.button("🔊 Generate Sample (Streaming + SSML)")
+
+    # Process both buttons
+    if gen_podcast or gen_sample:
         texts = load_text_inputs(uploaded_excel, custom_text)
         for file_name, text in texts.items():
             if uploaded_excel is None and file_name == "custom":
                 file_name = f"{uuid.uuid4().hex[:8]}"
-            output_path = generate_audio_from_text(text, users[selected_user], selected_user, file_name, emotion, rate)
-            if output_path:
-                cloud_url = upload_audio_to_cloudinary(output_path, folder="Generated_Audio", public_id=file_name)
-                st.audio(output_path)
-                if cloud_url:
-                    st.markdown(f"[Cloudinary Link]({cloud_url})")
-            else:
-                st.error("❌ Failed to generate audio.")
+            
+            voice_id = users[selected_user]
+
+            try:
+                if gen_podcast:
+                    # Old method (speech)
+                    output_path = generate_audio_from_text(
+                        text, voice_id, selected_user, file_name, emotion=None, rate=0
+                    )
+                    if output_path:
+                        cloud_url = upload_audio_to_cloudinary(output_path, folder="Generated_Audio", public_id=file_name)
+                        st.audio(output_path)
+                        if cloud_url:
+                            st.markdown(f"[Cloudinary Link]({cloud_url})")
+                elif gen_sample:
+                    from utils.generate_sample_stream import generate_sample_stream
+
+                    ssml_params = {
+                        "rate": rate,
+                        "pitch": pitch,
+                        "volume": volume,
+                        "emotion": emotion,
+                        "intensity": intensity
+                    }
+
+                    audio_bytes = generate_sample_stream(text, voice_id, ssml_params)
+
+                    with open(f"{file_name}.mp3", "wb") as f:
+                        f.write(audio_bytes)
+
+                    st.audio(audio_bytes, format="audio/mp3")
+                    st.success(f"✅ Sample audio generated for: {file_name}")
+            except Exception as e:
+                st.error(f"❌ Error generating audio: {e}")
 
 # --- Block 3: Merge with Music ---
 elif selected.startswith("🎵 Merge with Music"):
@@ -237,7 +284,7 @@ elif selected.startswith("🗂️ Manage Files"):
                     user_path = os.path.join(base_path, user_folder)
                     if os.path.isdir(user_path):
                         for file in os.listdir(user_path):
-                            file_path = os.path.join(user_path, file)
+                            file_path = os.path.join(user_folder, file)
                             if os.path.isfile(file_path) and file.lower().endswith(audio_extensions):
                                 audio_files.append((user_folder, file, file_path))
             else:
@@ -356,5 +403,24 @@ elif selected.startswith("📄 User Data"):
                 st.success("✅ Uploaded to GitHub")
             else:
                 st.warning("⚠️ Enter token and repo name")
+
+# --- Git Integration Block ---
+st.sidebar.header("⚙️ Git Integration")
+git_repo_url = "https://github.com/myle1996kh/sbf-voice-cloning.git"
+git_local_path = "c:/Users/LG/OneDrive/Máy tính/Lucy ver24/CHUNKS/Working on/SBF - V1 - test/SBF-V1/sbf-voice-cloning/chunks_voice_cloning"
+
+if st.sidebar.button("Initialize Git Repository"):
+    try:
+        os.makedirs(git_local_path, exist_ok=True)
+        os.chdir(git_local_path)
+        os.system("git init")
+        os.system(f"git remote add origin {git_repo_url}")
+        os.system("git add .")
+        os.system('git commit -m "Initial push"')
+        os.system("git branch -M main")
+        os.system("git push -u origin main")
+        st.sidebar.success("✅ Git repository initialized and pushed to GitHub.")
+    except Exception as e:
+        st.sidebar.error(f"❌ Error initializing git: {e}")
 
 
