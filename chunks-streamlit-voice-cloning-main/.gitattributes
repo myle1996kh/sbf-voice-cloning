@@ -1,9 +1,0 @@
-# Ignore audio/media files
-*.mp3
-*.wav
-
-# Ignore Python cache and virtual environments
-__pycache__/
-*.py[cod]
-.venv/
-env/
