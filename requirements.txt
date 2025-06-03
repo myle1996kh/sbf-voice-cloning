@@ -1,2 +1,4 @@
 streamlit
 requests
+streamlit-audiorec
+youtube_transcript_api

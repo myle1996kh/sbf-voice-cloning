@@ -1,10 +1,11 @@
 import requests
 import os
+import time
 
 EMOTION_OPTIONS = [
     "angry", "cheerful", "sad", "terrified", "relaxed",
     "fearful", "surprised", "calm", "assertive", "energetic",
-    "warm", "direct", "bright"
+    "warm", "direct", "bright","none"
 ]
 
 def fetch_voice_ids(api_key):
@@ -30,16 +31,27 @@ def fetch_voice_ids(api_key):
 
 def generate_audio_with_params(api_key, voice_id, text, emotion,
                                 pitch_pct, rate_pct, volume_level,
-                                output_path="output/output.mp3"):
+                                output_path=None):
     """Generate audio using SSML via /v1/audio/stream endpoint."""
 
-    ssml_text = (
-        f'<speak>'
-        f'<speechify:style emotion="{emotion}">'
-        f'<prosody rate="{rate_pct:+d}%" pitch="{pitch_pct:+d}%" volume="{volume_level}">{text}</prosody>'
-        f'</speechify:style>'
-        f'</speak>'
-    )
+    if output_path is None:
+        timestamp = int(time.time() * 1000)
+        output_path = f"output/output_{timestamp}.mp3"
+
+    if emotion == "none":
+        ssml_text = (
+            f'<speak>'
+            f'<prosody rate="{rate_pct:+d}%" pitch="{pitch_pct:+d}%" volume="{volume_level}">{text}</prosody>'
+            f'</speak>'
+        )
+    else:
+        ssml_text = (
+            f'<speak>'
+            f'<speechify:style emotion="{emotion}">' 
+            f'<prosody rate="{rate_pct:+d}%" pitch="{pitch_pct:+d}%" volume="{volume_level}">{text}</prosody>'
+            f'</speechify:style>'
+            f'</speak>'
+        )
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -69,3 +81,21 @@ def generate_audio_with_params(api_key, voice_id, text, emotion,
         print("❌ Exception during request:", e)
         return None
 
+def generate_demo_audio(api_key, voice_id, full_text, emotion, pitch_pct, rate_pct, volume_level, output_path=None):
+    """
+    Generate demo audio with only the first 500 characters.
+    """
+    limited_text = full_text[:200]  # Limit to 200 characters
+    if output_path is None:
+        timestamp = int(time.time() * 1000)
+        output_path = f"output/demo_output_{timestamp}.mp3"
+    return generate_audio_with_params(
+        api_key=api_key,
+        voice_id=voice_id,
+        text=limited_text,
+        emotion=emotion,
+        pitch_pct=pitch_pct,
+        rate_pct=rate_pct,
+        volume_level=volume_level,
+        output_path=output_path
+    )
