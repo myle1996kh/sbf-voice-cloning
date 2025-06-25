@@ -506,8 +506,15 @@ elif tabs == "Mirror Talk":
     if wav_audio_data is not None:
         st.audio(wav_audio_data, format='audio/wav')
         
-        # Process Button
-        if st.button("🔄 Process & Generate Improved Speech"):
+        # Auto-save and Proceed Button
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.success("✅ Recording captured! Ready to process.")
+        with col2:
+            proceed_button = st.button("🚀 Proceed & Process", type="primary", use_container_width=True)
+        
+        # Auto-trigger processing when Proceed is clicked
+        if proceed_button:
             # Generate timestamp for this session
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
@@ -582,21 +589,36 @@ elif tabs == "Mirror Talk":
                         st.info(f"💾 Session saved as: {session_name} (ID: {session_id})")
                         
                         # Display results
+                        st.markdown("---")
+                        st.subheader("🎭 Comparison Results")
+                        
                         col1, col2 = st.columns(2)
                         with col1:
                             st.markdown("**🎤 Your Original Recording:**")
                             st.audio(wav_audio_data, format='audio/wav')
+                            st.caption("📝 Original Text:")
+                            st.text(original_text)
                         
                         with col2:
                             st.markdown("**✨ Improved Version (Your Cloned Voice):**")
                             audio_bytes = open(output_file, "rb").read()
                             st.audio(audio_bytes, format="audio/mp3")
+                            st.caption("✨ Corrected Text:")
+                            st.text(corrected_text)
                             st.download_button(
                                 "⬇️ Download Improved Audio", 
                                 audio_bytes, 
                                 file_name=os.path.basename(output_file),
-                                key="download_mirror"
+                                key="download_mirror",
+                                use_container_width=True
                             )
+                        
+                        # Show improvements if any
+                        if original_text != corrected_text:
+                            st.info("🔍 **Grammar Improvements Detected!** Compare the texts above to see what was corrected.")
+                        else:
+                            st.success("👌 **Perfect Grammar!** Your original speech was already grammatically correct.")
+                            
                     else:
                         st.error("❌ Failed to generate improved audio. Please try again.")
                         # Clean up original file if generation failed
@@ -619,10 +641,11 @@ elif tabs == "Mirror Talk":
         **Mirror Talk** helps you improve your speech by:
         
         1. **🎙️ Recording** - Capture your natural speech
-        2. **📝 Transcription** - Convert your speech to text using advanced AI
-        3. **✨ Grammar Correction** - Fix grammar and improve clarity with Gintler AI
-        4. **🎵 Voice Cloning** - Generate the improved version using your cloned voice
-        5. **🔄 Compare** - Listen to both versions and learn from the differences
+        2. **🚀 Proceed** - Click to automatically save and start processing
+        3. **📝 Transcription** - Convert your speech to text using advanced AI
+        4. **✨ Grammar Correction** - Fix grammar and improve clarity with Gintler AI
+        5. **🎵 Voice Cloning** - Generate the improved version using your cloned voice
+        6. **🔄 Compare** - Listen to both versions and learn from the differences
         
         **Best Practices:**
         - Speak clearly and at normal pace
@@ -655,7 +678,6 @@ elif tabs == "Mirror Talk":
                 st.markdown("---")
         else:
             st.info("No recent sessions found. Start your first Mirror Talk session above!")
-
 # ----------------------------
 # 🧱 Tab 5: Manage Files
 # ----------------------------
