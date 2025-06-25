@@ -488,169 +488,181 @@ elif tabs == "Mirror Talk":
     selected_voice_id = name_to_id[selected_name]
     st.success(f"✅ Using Voice: {selected_voice_id[:12]}...")
 
-    # Audio Settings
-    col1, col2 = st.columns(2)
-    with col1:
-        emotion = st.selectbox("🎭 Emotion", EMOTION_OPTIONS, index=7)  # Default to "calm"
-        volume = st.selectbox("🔊 Volume", ["x-soft", "soft", "medium", "loud", "x-loud"], index=2)
-    with col2:
-        pitch = st.slider("🎚 Pitch %", -50, 50, 0)
-        rate = st.slider("🚀 Speed %", -100, 100, 0)
+    # Collapsed Audio Settings
+    with st.expander("🎛️ Audio Settings (Optional)", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            emotion = st.selectbox("🎭 Emotion", EMOTION_OPTIONS, index=7)  # Default to "calm"
+            volume = st.selectbox("🔊 Volume", ["x-soft", "soft", "medium", "loud", "x-loud"], index=2)
+        with col2:
+            pitch = st.slider("🎚 Pitch %", -50, 50, 0)
+            rate = st.slider("🚀 Speed %", -100, 100, 0)
 
     # Recording Section
     st.subheader("🎙️ Record Your Speech")
-    st.info("💡 Tip: Speak clearly and naturally. The system will improve your grammar and pronunciation.")
+    st.info("💡 Tip: Press 'Stop Recording' to automatically save and process your speech!")
     
     wav_audio_data = st_audiorec()
 
     if wav_audio_data is not None:
+        # Show the recorded audio
         st.audio(wav_audio_data, format='audio/wav')
         
-        # Auto-save and Proceed Button
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.success("✅ Recording captured! Ready to process.")
-        with col2:
-            proceed_button = st.button("🚀 Proceed & Process", type="primary", use_container_width=True)
+        # Auto-trigger processing immediately when recording stops
+        # Generate timestamp for this session
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Auto-trigger processing when Proceed is clicked
-        if proceed_button:
-            # Generate timestamp for this session
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        with st.spinner("🎯 Processing your speech..."):
+            # Step 1: Save recorded audio with unique filename
+            temp_audio_path = os.path.join("output", f"mirror_original_{timestamp}.wav")
+            with open(temp_audio_path, "wb") as f:
+                f.write(wav_audio_data)
             
-            with st.spinner("🎯 Processing your speech..."):
-                # Step 1: Save recorded audio with unique filename
-                temp_audio_path = os.path.join("output", f"mirror_original_{timestamp}.wav")
-                with open(temp_audio_path, "wb") as f:
-                    f.write(wav_audio_data)
-                
-                # Step 2: Convert speech to text
-                try:
-                    original_text = process_speech_to_text(temp_audio_path)
-                    if not original_text:
-                        st.error("❌ Could not extract text from your recording. Please try again.")
-                        st.stop()
-                    
-                    st.success("✅ Speech-to-text completed!")
-                    st.text_area("📝 Original Text (from your recording):", value=original_text, height=100)
-                    
-                except Exception as e:
-                    st.error(f"❌ Speech recognition error: {str(e)}")
+            # Step 2: Convert speech to text
+            try:
+                original_text = process_speech_to_text(temp_audio_path)
+                if not original_text:
+                    st.error("❌ Could not extract text from your recording. Please try again.")
                     st.stop()
+                
+                st.success("✅ Speech-to-text completed!")
+                
+            except Exception as e:
+                st.error(f"❌ Speech recognition error: {str(e)}")
+                st.stop()
 
-            with st.spinner("🧠 Improving grammar with Gintler AI..."):
-                # Step 3: Process through NLP for grammar correction
-                try:
-                    corrected_text = correct_grammar_with_gintler(original_text)
-                    if not corrected_text:
-                        st.warning("⚠️ Grammar correction failed, using original text.")
-                        corrected_text = original_text
-                    
-                    st.success("✅ Grammar correction completed!")
-                    st.text_area("✨ Improved Text (grammar corrected):", value=corrected_text, height=100)
-                    
-                except Exception as e:
-                    st.warning(f"⚠️ Grammar correction error: {str(e)}")
+        with st.spinner("🧠 Improving grammar with Gintler AI..."):
+            # Step 3: Process through NLP for grammar correction
+            try:
+                corrected_text = correct_grammar_with_gintler(original_text)
+                if not corrected_text:
+                    st.warning("⚠️ Grammar correction failed, using original text.")
                     corrected_text = original_text
+                
+                st.success("✅ Grammar correction completed!")
+                
+            except Exception as e:
+                st.warning(f"⚠️ Grammar correction error: {str(e)}")
+                corrected_text = original_text
 
-            with st.spinner("🎵 Generating improved audio with your cloned voice..."):
-                # Step 4: Generate audio using corrected text and cloned voice
-                try:
-                    # Create unique filename for generated audio
-                    generated_audio_path = os.path.join("output", f"mirror_generated_{timestamp}.mp3")
+        with st.spinner("🎵 Generating improved audio with your cloned voice..."):
+            # Step 4: Generate audio using corrected text and cloned voice
+            try:
+                # Create unique filename for generated audio
+                generated_audio_path = os.path.join("output", f"mirror_generated_{timestamp}.mp3")
+                
+                output_file = generate_audio_with_params(
+                    API_KEY, selected_voice_id, corrected_text,
+                    emotion, pitch, rate, volume,
+                    output_path=generated_audio_path
+                )
+                
+                if output_file:
+                    # Get voice name for database
+                    voice_name = selected_name.split(" (")[0]  # Extract name without ID
                     
-                    output_file = generate_audio_with_params(
-                        API_KEY, selected_voice_id, corrected_text,
-                        emotion, pitch, rate, volume,
-                        output_path=generated_audio_path
+                    # Save session to database
+                    session_name = f"Mirror Talk {timestamp}"
+                    session_id = save_mirror_talk_session(
+                        session_name=session_name,
+                        voice_id=selected_voice_id,
+                        voice_name=voice_name,
+                        original_text=original_text,
+                        corrected_text=corrected_text,
+                        emotion=emotion,
+                        pitch=pitch,
+                        rate=rate,
+                        volume=volume,
+                        original_audio_path=temp_audio_path,
+                        generated_audio_path=output_file
                     )
                     
-                    if output_file:
-                        # Get voice name for database
-                        voice_name = selected_name.split(" (")[0]  # Extract name without ID
-                        
-                        # Save session to database
-                        session_name = f"Mirror Talk {timestamp}"
-                        session_id = save_mirror_talk_session(
-                            session_name=session_name,
-                            voice_id=selected_voice_id,
-                            voice_name=voice_name,
-                            original_text=original_text,
-                            corrected_text=corrected_text,
-                            emotion=emotion,
-                            pitch=pitch,
-                            rate=rate,
-                            volume=volume,
-                            original_audio_path=temp_audio_path,
-                            generated_audio_path=output_file
+                    st.success("🎉 Mirror Talk completed successfully!")
+                    
+                    # Main Results - Focus on Audio Comparison
+                    st.markdown("---")
+                    st.subheader("🎭 Audio Comparison")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("**🎤 Your Original Recording**")
+                        st.audio(wav_audio_data, format='audio/wav')
+                    
+                    with col2:
+                        st.markdown("**✨ Improved Version (Your Cloned Voice)**")
+                        audio_bytes = open(output_file, "rb").read()
+                        st.audio(audio_bytes, format="audio/mp3")
+                        st.download_button(
+                            "⬇️ Download Improved Audio", 
+                            audio_bytes, 
+                            file_name=os.path.basename(output_file),
+                            key="download_mirror",
+                            use_container_width=True
                         )
-                        
-                        st.success("🎉 Mirror Talk completed successfully!")
+                    
+                    # Detailed Results in Expander
+                    with st.expander("📝 Text Comparison & Details", expanded=False):
                         st.info(f"💾 Session saved as: {session_name} (ID: {session_id})")
                         
-                        # Display results
-                        st.markdown("---")
-                        st.subheader("🎭 Comparison Results")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown("**🎤 Your Original Recording:**")
-                            st.audio(wav_audio_data, format='audio/wav')
+                        detail_col1, detail_col2 = st.columns(2)
+                        with detail_col1:
                             st.caption("📝 Original Text:")
-                            st.text(original_text)
+                            st.text_area("Original", value=original_text, height=100, disabled=True)
                         
-                        with col2:
-                            st.markdown("**✨ Improved Version (Your Cloned Voice):**")
-                            audio_bytes = open(output_file, "rb").read()
-                            st.audio(audio_bytes, format="audio/mp3")
+                        with detail_col2:
                             st.caption("✨ Corrected Text:")
-                            st.text(corrected_text)
-                            st.download_button(
-                                "⬇️ Download Improved Audio", 
-                                audio_bytes, 
-                                file_name=os.path.basename(output_file),
-                                key="download_mirror",
-                                use_container_width=True
-                            )
+                            st.text_area("Corrected", value=corrected_text, height=100, disabled=True)
                         
                         # Show improvements if any
                         if original_text != corrected_text:
-                            st.info("🔍 **Grammar Improvements Detected!** Compare the texts above to see what was corrected.")
+                            st.success("🔍 **Grammar Improvements Applied!** Compare the texts above to see what was corrected.")
                         else:
-                            st.success("👌 **Perfect Grammar!** Your original speech was already grammatically correct.")
-                            
-                    else:
-                        st.error("❌ Failed to generate improved audio. Please try again.")
-                        # Clean up original file if generation failed
-                        try:
-                            os.remove(temp_audio_path)
-                        except:
-                            pass
+                            st.info("👌 **Perfect Grammar!** Your original speech was already grammatically correct.")
                         
-                except Exception as e:
-                    st.error(f"❌ Audio generation error: {str(e)}")
-                    # Clean up files if error occurred
+                        # Settings Used
+                        st.caption("🎛️ Settings Used:")
+                        setting_cols = st.columns(4)
+                        with setting_cols[0]:
+                            st.metric("Emotion", emotion)
+                        with setting_cols[1]:
+                            st.metric("Volume", volume)
+                        with setting_cols[2]:
+                            st.metric("Pitch", f"{pitch}%")
+                        with setting_cols[3]:
+                            st.metric("Speed", f"{rate}%")
+                        
+                else:
+                    st.error("❌ Failed to generate improved audio. Please try again.")
+                    # Clean up original file if generation failed
                     try:
                         os.remove(temp_audio_path)
                     except:
                         pass
+                    
+            except Exception as e:
+                st.error(f"❌ Audio generation error: {str(e)}")
+                # Clean up files if error occurred
+                try:
+                    os.remove(temp_audio_path)
+                except:
+                    pass
 
     # Tips and Instructions
     with st.expander("💡 How Mirror Talk Works"):
         st.markdown("""
         **Mirror Talk** helps you improve your speech by:
         
-        1. **🎙️ Recording** - Capture your natural speech
-        2. **🚀 Proceed** - Click to automatically save and start processing
-        3. **📝 Transcription** - Convert your speech to text using advanced AI
-        4. **✨ Grammar Correction** - Fix grammar and improve clarity with Gintler AI
-        5. **🎵 Voice Cloning** - Generate the improved version using your cloned voice
-        6. **🔄 Compare** - Listen to both versions and learn from the differences
+        1. **🎙️ Start Recording** - Begin capturing your speech
+        2. **🛑 Stop Recording** - Automatically saves and starts processing
+        3. **📝 Transcription** - Converts your speech to text using advanced AI
+        4. **✨ Grammar Correction** - Fixes grammar and improves clarity with Gintler AI
+        5. **🎵 Voice Cloning** - Generates the improved version using your cloned voice
+        6. **🔄 Compare** - Listen to both versions side-by-side
         
         **Best Practices:**
         - Speak clearly and at normal pace
         - Use complete sentences
-        - Try different emotions and settings
+        - Adjust settings in the Audio Settings section if needed
         - Practice regularly to improve your natural speech patterns
         """)
     
@@ -663,18 +675,33 @@ elif tabs == "Mirror Talk":
                 
                 st.markdown(f"**{session_name}** - {voice_name} ({created_at})")
                 
-                session_col1, session_col2 = st.columns(2)
-                with session_col1:
-                    st.caption("Original:")
-                    st.text(original_text[:100] + "..." if len(original_text) > 100 else original_text)
-                with session_col2:
-                    st.caption("Improved:")
-                    st.text(corrected_text[:100] + "..." if len(corrected_text) > 100 else corrected_text)
-                
+                # Audio playback for recent sessions
                 if generated_audio_path and os.path.exists(generated_audio_path):
-                    with open(generated_audio_path, "rb") as f:
-                        audio_bytes = f.read()
-                        st.audio(audio_bytes, format="audio/mp3")
+                    session_audio_col1, session_audio_col2 = st.columns(2)
+                    
+                    with session_audio_col1:
+                        st.caption("Original:")
+                        if original_audio_path and os.path.exists(original_audio_path):
+                            with open(original_audio_path, "rb") as f:
+                                st.audio(f.read(), format="audio/wav")
+                        else:
+                            st.text("Original audio not available")
+                    
+                    with session_audio_col2:
+                        st.caption("Improved:")
+                        with open(generated_audio_path, "rb") as f:
+                            audio_bytes = f.read()
+                            st.audio(audio_bytes, format="audio/mp3")
+                
+                # Text preview
+                text_preview_col1, text_preview_col2 = st.columns(2)
+                with text_preview_col1:
+                    st.caption("Original Text:")
+                    st.text(original_text[:80] + "..." if len(original_text) > 80 else original_text)
+                with text_preview_col2:
+                    st.caption("Improved Text:")
+                    st.text(corrected_text[:80] + "..." if len(corrected_text) > 80 else corrected_text)
+                
                 st.markdown("---")
         else:
             st.info("No recent sessions found. Start your first Mirror Talk session above!")
