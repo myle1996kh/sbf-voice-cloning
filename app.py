@@ -540,8 +540,6 @@ elif tabs == "Mirror Talk":
                     st.error("❌ Could not extract text from your recording. Please try again.")
                     st.stop()
                 
-                st.success("✅ Speech-to-text completed!")
-                
             except Exception as e:
                 st.error(f"❌ Speech recognition error: {str(e)}")
                 st.stop()
@@ -553,8 +551,6 @@ elif tabs == "Mirror Talk":
                 if not corrected_text:
                     st.warning("⚠️ Grammar correction failed, using original text.")
                     corrected_text = original_text
-                
-                st.success("✅ Grammar correction completed!")
                 
             except Exception as e:
                 st.warning(f"⚠️ Grammar correction error: {str(e)}")
@@ -616,7 +612,12 @@ elif tabs == "Mirror Talk":
                         )
                     
                     # Detailed Results in Expander
-                    with st.expander("📝 Text Comparison & Details", expanded=False):
+                    with st.expander("📝 Text Comparison & Processing Details", expanded=False):
+                        # Processing Status
+                        st.success("✅ Speech-to-text completed!")
+                        st.success("✅ Grammar correction completed!")
+                        st.success("🎉 Mirror Talk completed successfully!")
+                        
                         st.info(f"💾 Session saved as: {session_name} (ID: {session_id})")
                         
                         detail_col1, detail_col2 = st.columns(2)
@@ -720,9 +721,6 @@ elif tabs == "Mirror Talk":
                 st.markdown("---")
         else:
             st.info("No recent sessions found. Start your first Mirror Talk session above!")
-# ----------------------------
-# 🧱 Tab 5: Manage Files
-# ----------------------------
 # ----------------------------
 # 🧱 Tab 5: Improved File Management with Better UI
 # ----------------------------
