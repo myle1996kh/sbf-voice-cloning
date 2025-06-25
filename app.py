@@ -477,19 +477,21 @@ elif tabs == "Mirror Talk":
     st.header("🪞 Mirror Talk - Record, Improve & Clone")
     st.markdown("*Record your speech, get grammar-corrected version in your cloned voice*")
 
-    # Voice Selection Block
-    voice_entries = load_all_voice_ids()
-    if not voice_entries:
-        st.warning("⚠️ No saved voice IDs found. Go to 'Voice Setup' tab first.")
-        st.stop()
-    
-    name_to_id = {f"{name} ({vid[:8]})": vid for name, vid in voice_entries}
-    selected_name = st.selectbox("🎤 Select your cloned voice", list(name_to_id.keys()))
-    selected_voice_id = name_to_id[selected_name]
-    st.success(f"✅ Using Voice: {selected_voice_id[:12]}...")
-
-    # Collapsed Audio Settings
-    with st.expander("🎛️ Audio Settings (Optional)", expanded=False):
+    # Voice & Audio Settings - Collapsed
+    with st.expander("🎤 Voice & Audio Settings", expanded=False):
+        # Voice Selection Block
+        voice_entries = load_all_voice_ids()
+        if not voice_entries:
+            st.warning("⚠️ No saved voice IDs found. Go to 'Voice Setup' tab first.")
+            st.stop()
+        
+        name_to_id = {f"{name} ({vid[:8]})": vid for name, vid in voice_entries}
+        selected_name = st.selectbox("🎤 Select your cloned voice", list(name_to_id.keys()))
+        selected_voice_id = name_to_id[selected_name]
+        st.success(f"✅ Using Voice: {selected_voice_id[:12]}...")
+        
+        st.markdown("---")
+        st.subheader("🎛️ Audio Settings")
         col1, col2 = st.columns(2)
         with col1:
             emotion = st.selectbox("🎭 Emotion", EMOTION_OPTIONS, index=7)  # Default to "calm"
@@ -497,6 +499,19 @@ elif tabs == "Mirror Talk":
         with col2:
             pitch = st.slider("🎚 Pitch %", -50, 50, 0)
             rate = st.slider("🚀 Speed %", -100, 100, 0)
+    
+    # Handle case when expander is collapsed - use default values
+    if 'selected_voice_id' not in locals():
+        voice_entries = load_all_voice_ids()
+        if not voice_entries:
+            st.warning("⚠️ No saved voice IDs found. Go to 'Voice Setup' tab first.")
+            st.stop()
+        name_to_id = {f"{name} ({vid[:8]})": vid for name, vid in voice_entries}
+        selected_voice_id = list(name_to_id.values())[0]  # Use first voice as default
+        emotion = "calm"
+        volume = "medium"
+        pitch = 0
+        rate = 0
 
     # Recording Section
     st.subheader("🎙️ Record Your Speech")
