@@ -1,7 +1,10 @@
 streamlit
 requests
-youtube-transcript-api
-beautifulsoup4
+streamlit-audiorec
+SpeechRecognition
+pydub
+pyaudio
+pocketsphinx
+youtube-transcript-api>=0.6.0
+beautifulsoup4 
 lxml
-gtts
-openai
