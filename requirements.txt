@@ -1,4 +1,10 @@
 streamlit
 requests
 streamlit-audiorec
-youtube_transcript_api
+SpeechRecognition
+pydub
+pyaudio
+pocketsphinx
+youtube-transcript-api>=0.6.0
+beautifulsoup4 
+lxml
