@@ -2,15 +2,16 @@ import streamlit as st
 from utils.speechify_api import generate_audio_with_params, EMOTION_OPTIONS, generate_demo_audio
 from utils.voice_utils import init_voice_db, get_voice_id, save_voice_to_db, load_all_voice_ids
 from utils.yt_utils import get_youtube_transcript, extract_video_id
-from utils.transcript_db import init_transcript_db, save_transcript, load_all_transcripts, get_transcript_by_id
+from utils.transcript_db import init_transcript_db, save_transcript, load_all_transcripts, get_transcript_by_id, delete_transcript
 from utils.nlp_processor import process_speech_to_text, correct_grammar_with_gintler
 from utils.mirror_talk_db import (
     init_mirror_talk_db, save_mirror_talk_session, load_all_mirror_talk_sessions,
     delete_mirror_talk_session, get_mirror_talk_stats
 )
-from st_audiorec import st_audiorec
+# ❌ REMOVED: from st_audiorec import st_audiorec  # This causes PyAudio dependency
 import os
 import glob
+import re
 from datetime import datetime
 from io import BytesIO
 
@@ -108,13 +109,15 @@ if tabs == "Voice Setup":
             st.info("No transcripts found. Please add a transcript in the 'Transcript' tab.")
 
         st.subheader("🎙 Record below and click 'Create Voice' after:")
-        wav_audio_data = st_audiorec()
+        
+        # ✅ REPLACED st_audiorec with Streamlit native audio input
+        wav_audio_data = st.audio_input("Click to record your voice")
 
         if wav_audio_data is not None:
             st.audio(wav_audio_data, format='audio/wav')
             temp_audio_path = os.path.join("output", "recorded_voice.wav")
             with open(temp_audio_path, "wb") as f:
-                f.write(wav_audio_data)
+                f.write(wav_audio_data.getvalue())  # ✅ FIXED: Use getvalue() for audio_input
 
             if st.button("🎯 Create Voice from Recording") and name:
                 with st.spinner("Creating voice from recording..."):
@@ -402,6 +405,7 @@ elif tabs == "Transcript":  # ✅ FIX: Changed to elif
                 st.success("📥 Transcript downloaded!")
     else:
         st.info("💡 No transcript loaded. Choose an option above to get started!")
+
 # ----------------------------
 # 🧱 Tab 3: Generate Audio
 # ----------------------------
@@ -501,7 +505,8 @@ elif tabs == "Mirror Talk":
     st.subheader("🎙️ Record Your Speech")
     st.info("💡 Tip: Speak clearly and naturally. The system will improve your grammar and pronunciation.")
     
-    wav_audio_data = st_audiorec()
+    # ✅ REPLACED st_audiorec with Streamlit native audio input
+    wav_audio_data = st.audio_input("Click to record your speech")
 
     if wav_audio_data is not None:
         st.audio(wav_audio_data, format='audio/wav')
@@ -515,7 +520,7 @@ elif tabs == "Mirror Talk":
                 # Step 1: Save recorded audio with unique filename
                 temp_audio_path = os.path.join("output", f"mirror_original_{timestamp}.wav")
                 with open(temp_audio_path, "wb") as f:
-                    f.write(wav_audio_data)
+                    f.write(wav_audio_data.getvalue())  # ✅ FIXED: Use getvalue() for audio_input
                 
                 # Step 2: Convert speech to text
                 try:
@@ -658,9 +663,6 @@ elif tabs == "Mirror Talk":
 
 # ----------------------------
 # 🧱 Tab 5: Manage Files
-# ----------------------------
-# ----------------------------
-# 🧱 Tab 5: Improved File Management with Better UI
 # ----------------------------
 elif tabs == "Manage Files":
     st.header("📁 Manage Output Files")
