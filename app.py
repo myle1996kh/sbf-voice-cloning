@@ -35,7 +35,7 @@ st.sidebar.image("assests/logo.png", width=180)
 st.sidebar.markdown("<h2 style='text-align:left; font-size: 22px;'>🧭 SOUND-BASED FOUNDATION</h2>", unsafe_allow_html=True)
 tabs = st.sidebar.radio(
     "Navigation",
-    ["Voice Setup", "Transcript", "Generate Audio", "Mirror Talk", "Manage Files"],
+    ["Voice Setup", "Transcript", "Generate Podcast", "Mirror Talk", "Manage Files"],
     label_visibility="collapsed",
     key="main_tabs"
 )
@@ -403,10 +403,10 @@ elif tabs == "Transcript":  # ✅ FIX: Changed to elif
     else:
         st.info("💡 No transcript loaded. Choose an option above to get started!")
 # ----------------------------
-# 🧱 Tab 3: Generate Audio
+# 🧱 Tab 3: Generate Podcast
 # ----------------------------
-elif tabs == "Generate Audio":
-    st.header("🎛 Customize & Generate Audio")
+elif tabs == "Generate Podcast":
+    st.header("🎛 Customize & Generate Podcast")
 
     input_mode = st.radio("Transcript Source", ["Select from history", "Input custom text"], horizontal=True)
     transcript = ""
