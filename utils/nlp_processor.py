@@ -5,64 +5,72 @@ import tempfile
 import os
 from pydub import AudioSegment
 import io
+import whisper
 
-def process_speech_to_text(audio_file_path):
+def process_speech_to_text(audio_file_path, model_size="base", language="en"):
     """
-    Convert audio file to text using Google Speech Recognition.
+    Convert audio file to text using OpenAI Whisper.
     
     Args:
-        audio_file_path (str): Path to the audio file (wav format)
+        audio_file_path (str): Path to the audio file (any format supported by pydub)
+        model_size (str): Whisper model size - "tiny", "base", "small", "medium", "large"
+                         Larger models are more accurate but slower
+        language (str): Language code (e.g., "en", "es", "fr") or None for auto-detection
     
     Returns:
         str: Transcribed text or None if failed
     """
-    recognizer = sr.Recognizer()
+    temp_wav_path = None
     
     try:
-        # Convert to wav if needed and ensure proper format
-        audio = AudioSegment.from_file(audio_file_path)
-        audio = audio.set_frame_rate(16000).set_channels(1)
+        # Load Whisper model (this will download it on first use)
+        model = whisper.load_model(model_size)
         
-        # Create temporary wav file
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
-            audio.export(temp_wav.name, format="wav")
-            temp_wav_path = temp_wav.name
+        # Convert audio to format Whisper expects if needed
+        # Whisper can handle many formats directly, but we'll normalize for consistency
+        if not audio_file_path.lower().endswith('.wav'):
+            audio = AudioSegment.from_file(audio_file_path)
+            # Whisper works best with 16kHz mono audio
+            audio = audio.set_frame_rate(16000).set_channels(1)
+            
+            # Create temporary wav file
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
+                audio.export(temp_wav.name, format="wav")
+                temp_wav_path = temp_wav.name
+            
+            # Use the temporary file
+            file_to_process = temp_wav_path
+        else:
+            # Use original file if it's already wav
+            file_to_process = audio_file_path
         
-        # Perform speech recognition
-        with sr.AudioFile(temp_wav_path) as source:
-            # Adjust for ambient noise
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            # Record the audio
-            audio_data = recognizer.record(source)
+        # Transcribe using Whisper
+        if language and language != "auto":
+            result = model.transcribe(file_to_process, language=language)
+        else:
+            result = model.transcribe(file_to_process)  # Auto-detect language
         
-        # Try Google Speech Recognition first
-        try:
-            text = recognizer.recognize_google(audio_data, language='en-US')
-            return text
-        except sr.UnknownValueError:
-            print("Google Speech Recognition could not understand audio")
-            return None
-        except sr.RequestError as e:
-            print(f"Could not request results from Google Speech Recognition service; {e}")
-            # Fallback to offline recognition if available
-            try:
-                text = recognizer.recognize_sphinx(audio_data)
-                return text
-            except:
-                return None
+        # Extract the transcribed text
+        text = result["text"].strip()
+        
+        # Optional: Print detected language and confidence info
+        if "language" in result:
+            print(f"Detected language: {result['language']}")
+        
+        return text if text else None
     
     except Exception as e:
-        print(f"Error in speech-to-text conversion: {e}")
+        print(f"Error in Whisper speech-to-text conversion: {e}")
         return None
     
     finally:
         # Clean up temporary file
-        try:
-            if 'temp_wav_path' in locals():
+        if temp_wav_path and os.path.exists(temp_wav_path):
+            try:
                 os.unlink(temp_wav_path)
-        except:
-            pass
-
+            except:
+                pass
+                
 def correct_grammar_with_gintler(text):
     """
     Grammar correction using LanguageTool API (renamed from gintler for compatibility).
