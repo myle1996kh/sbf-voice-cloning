@@ -5,34 +5,22 @@ import tempfile
 import os
 from pydub import AudioSegment
 import io
-import whisper
-import warnings
 
-warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
-
-def process_speech_to_text(audio_file_path, model_size="base", language="en"):
+def process_speech_to_text(audio_file_path):
     """
-    Convert audio file to text using OpenAI Whisper.
+    Convert audio file to text using Google Speech Recognition.
     
     Args:
-        audio_file_path (str): Path to the audio file (any format supported by pydub)
-        model_size (str): Whisper model size - "tiny", "base", "small", "medium", "large"
-                         Larger models are more accurate but slower
-        language (str): Language code (e.g., "en", "es", "fr") or None for auto-detection
+        audio_file_path (str): Path to the audio file (wav format)
     
     Returns:
         str: Transcribed text or None if failed
     """
-    temp_wav_path = None
+    recognizer = sr.Recognizer()
     
     try:
-        # Load Whisper model with CPU-friendly settings
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        model = whisper.load_model(model_size, device=device)
-        
-        # Always convert audio to ensure proper format
+        # Convert to wav if needed and ensure proper format
         audio = AudioSegment.from_file(audio_file_path)
-        # Whisper works best with 16kHz mono audio
         audio = audio.set_frame_rate(16000).set_channels(1)
         
         # Create temporary wav file
@@ -40,38 +28,41 @@ def process_speech_to_text(audio_file_path, model_size="base", language="en"):
             audio.export(temp_wav.name, format="wav")
             temp_wav_path = temp_wav.name
         
-        # Transcribe using Whisper with CPU-optimized settings
-        transcribe_options = {
-            "fp16": False,  # Force FP32 for CPU compatibility
-            "verbose": False  # Reduce console output
-        }
+        # Perform speech recognition
+        with sr.AudioFile(temp_wav_path) as source:
+            # Adjust for ambient noise
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            # Record the audio
+            audio_data = recognizer.record(source)
         
-        if language and language != "auto":
-            transcribe_options["language"] = language
-        
-        result = model.transcribe(temp_wav_path, **transcribe_options)
-        
-        # Extract the transcribed text
-        text = result["text"].strip()
-        
-        # Optional: Print detected language info
-        if "language" in result and text:
-            print(f"Detected language: {result['language']}")
-        
-        return text if text else None
+        # Try Google Speech Recognition first
+        try:
+            text = recognizer.recognize_google(audio_data, language='en-US')
+            return text
+        except sr.UnknownValueError:
+            print("Google Speech Recognition could not understand audio")
+            return None
+        except sr.RequestError as e:
+            print(f"Could not request results from Google Speech Recognition service; {e}")
+            # Fallback to offline recognition if available
+            try:
+                text = recognizer.recognize_sphinx(audio_data)
+                return text
+            except:
+                return None
     
     except Exception as e:
-        print(f"Error in Whisper speech-to-text conversion: {e}")
+        print(f"Error in speech-to-text conversion: {e}")
         return None
     
     finally:
         # Clean up temporary file
-        if temp_wav_path and os.path.exists(temp_wav_path):
-            try:
+        try:
+            if 'temp_wav_path' in locals():
                 os.unlink(temp_wav_path)
-            except:
-                pass
-      
+        except:
+            pass
+
 def correct_grammar_with_gintler(text):
     """
     Grammar correction using LanguageTool API (renamed from gintler for compatibility).
