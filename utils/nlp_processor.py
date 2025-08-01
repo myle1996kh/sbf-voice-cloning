@@ -6,6 +6,7 @@ import os
 from pydub import AudioSegment
 import io
 import whisper
+import warnings
 
 warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
 
