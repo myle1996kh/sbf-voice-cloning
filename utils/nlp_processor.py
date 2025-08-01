@@ -7,6 +7,8 @@ from pydub import AudioSegment
 import io
 import whisper
 
+warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
+
 def process_speech_to_text(audio_file_path, model_size="base", language="en"):
     """
     Convert audio file to text using OpenAI Whisper.
@@ -23,38 +25,36 @@ def process_speech_to_text(audio_file_path, model_size="base", language="en"):
     temp_wav_path = None
     
     try:
-        # Load Whisper model (this will download it on first use)
-        model = whisper.load_model(model_size)
+        # Load Whisper model with CPU-friendly settings
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = whisper.load_model(model_size, device=device)
         
-        # Convert audio to format Whisper expects if needed
-        # Whisper can handle many formats directly, but we'll normalize for consistency
-        if not audio_file_path.lower().endswith('.wav'):
-            audio = AudioSegment.from_file(audio_file_path)
-            # Whisper works best with 16kHz mono audio
-            audio = audio.set_frame_rate(16000).set_channels(1)
-            
-            # Create temporary wav file
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
-                audio.export(temp_wav.name, format="wav")
-                temp_wav_path = temp_wav.name
-            
-            # Use the temporary file
-            file_to_process = temp_wav_path
-        else:
-            # Use original file if it's already wav
-            file_to_process = audio_file_path
+        # Always convert audio to ensure proper format
+        audio = AudioSegment.from_file(audio_file_path)
+        # Whisper works best with 16kHz mono audio
+        audio = audio.set_frame_rate(16000).set_channels(1)
         
-        # Transcribe using Whisper
+        # Create temporary wav file
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
+            audio.export(temp_wav.name, format="wav")
+            temp_wav_path = temp_wav.name
+        
+        # Transcribe using Whisper with CPU-optimized settings
+        transcribe_options = {
+            "fp16": False,  # Force FP32 for CPU compatibility
+            "verbose": False  # Reduce console output
+        }
+        
         if language and language != "auto":
-            result = model.transcribe(file_to_process, language=language)
-        else:
-            result = model.transcribe(file_to_process)  # Auto-detect language
+            transcribe_options["language"] = language
+        
+        result = model.transcribe(temp_wav_path, **transcribe_options)
         
         # Extract the transcribed text
         text = result["text"].strip()
         
-        # Optional: Print detected language and confidence info
-        if "language" in result:
+        # Optional: Print detected language info
+        if "language" in result and text:
             print(f"Detected language: {result['language']}")
         
         return text if text else None
@@ -70,7 +70,7 @@ def process_speech_to_text(audio_file_path, model_size="base", language="en"):
                 os.unlink(temp_wav_path)
             except:
                 pass
-                
+      
 def correct_grammar_with_gintler(text):
     """
     Grammar correction using LanguageTool API (renamed from gintler for compatibility).
