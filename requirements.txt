@@ -8,3 +8,4 @@ pocketsphinx
 youtube-transcript-api>=0.6.0
 beautifulsoup4 
 lxml
+openai-whisper
