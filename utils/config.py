@@ -2,6 +2,7 @@ import os
 
 # API Configuration
 SPEECHIFY_API_KEY = "W1vp8RVy2tnAw0GEj0NPqRszlWIXCfiDyLR5qOsY1rw="
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
 
 # Database Configuration
 DB_PATH = "voice_data.db"

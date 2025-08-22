@@ -5,6 +5,60 @@ import tempfile
 import os
 from pydub import AudioSegment
 import io
+import base64
+
+def get_api_key_multi_source(key_name):
+    """Get API key from multiple sources"""
+    if key_name == "DEEPGRAM_API_KEY":
+        # Check Streamlit session state first, then environment variables
+        import streamlit as st
+        if hasattr(st, 'session_state') and 'deepgram_api_key' in st.session_state:
+            return st.session_state.deepgram_api_key
+        return os.getenv("DEEPGRAM_API_KEY", None)
+    return None
+
+class DeepgramVoice:
+    def __init__(self):
+        self.stt_url = "https://api.deepgram.com/v1/listen"
+        self.tts_url = "https://api.deepgram.com/v1/speak"
+
+    def get_current_api_key(self):
+        """Get current Deepgram API key"""
+        return get_api_key_multi_source("DEEPGRAM_API_KEY")
+
+    def speech_to_text(self, audio_file_path: str) -> str:
+        """Convert speech to text using Deepgram STT"""
+        api_key = self.get_current_api_key()
+        if not api_key:
+            return "[Speech-to-Text requires Deepgram API key - add it in the sidebar]"
+
+        headers = {"Authorization": f"Token {api_key}", "Content-Type": "audio/wav"}
+        params = {"model": "nova-2", "language": "en-US", "smart_format": "true", "punctuate": "true"}
+
+        try:
+            with open(audio_file_path, "rb") as audio:
+                response = requests.post(self.stt_url, headers=headers, params=params, data=audio)
+
+            if response.status_code == 200:
+                result = response.json()
+                return result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
+            else:
+                return f"[STT Error: {response.status_code}]"
+        except Exception as e:
+            return f"[STT Error: {str(e)}]"
+
+def process_speech_to_text_deepgram(audio_file_path):
+    """
+    Convert audio file to text using Deepgram Speech Recognition.
+    
+    Args:
+        audio_file_path (str): Path to the audio file (wav format)
+    
+    Returns:
+        str: Transcribed text or error message if failed
+    """
+    deepgram = DeepgramVoice()
+    return deepgram.speech_to_text(audio_file_path)
 
 def process_speech_to_text(audio_file_path):
     """

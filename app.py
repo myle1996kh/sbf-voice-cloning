@@ -3,12 +3,12 @@ from utils.speechify_api import generate_audio_with_params, EMOTION_OPTIONS, gen
 from utils.voice_utils import init_voice_db, get_voice_id, save_voice_to_db, load_all_voice_ids
 from utils.yt_utils import get_youtube_transcript, extract_video_id
 from utils.transcript_db import init_transcript_db, save_transcript, load_all_transcripts, get_transcript_by_id
-from utils.nlp_processor import process_speech_to_text, correct_grammar_with_gintler
+from utils.nlp_processor import process_speech_to_text, process_speech_to_text_deepgram, correct_grammar_with_gintler
 from utils.mirror_talk_db import (
     init_mirror_talk_db, save_mirror_talk_session, load_all_mirror_talk_sessions,
     delete_mirror_talk_session, get_mirror_talk_stats
 )
-from st_audiorec import st_audiorec
+# from st_audiorec import st_audiorec  # Replaced with st.audio_input
 import os
 import glob
 from datetime import datetime
@@ -51,6 +51,19 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Deepgram API Key Configuration
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔑 API Configuration")
+deepgram_key = st.sidebar.text_input(
+    "Deepgram API Key", 
+    value=st.session_state.get('deepgram_api_key', ''),
+    type="password",
+    help="Enter your Deepgram API key for speech-to-text processing"
+)
+if deepgram_key:
+    st.session_state.deepgram_api_key = deepgram_key
+    st.sidebar.success("✅ Deepgram key configured")
 
 # ----------------------------
 # 🧱 Tab 1: Upload / Record / Select Voice
@@ -108,7 +121,7 @@ if tabs == "Voice Setup":
             st.info("No transcripts found. Please add a transcript in the 'Transcript' tab.")
 
         st.subheader("🎙 Record below and click 'Create Voice' after:")
-        wav_audio_data = st_audiorec()
+        wav_audio_data = st.audio_input("Record your voice", key="voice_setup_audio")
 
         if wav_audio_data is not None:
             st.audio(wav_audio_data, format='audio/wav')
@@ -515,9 +528,9 @@ elif tabs == "Mirror Talk":
 
     # Recording Section
     st.subheader("🎙️ Record Your Speech")
-    st.info("💡 Tip: Press 'Stop Recording' to automatically save and process your speech!")
+    st.info("💡 Tip: Record your speech and the system will automatically process it!")
     
-    wav_audio_data = st_audiorec()
+    wav_audio_data = st.audio_input("Record your speech for Mirror Talk", key="mirror_talk_audio")
 
     if wav_audio_data is not None:
         # Show the recorded audio
@@ -533,10 +546,10 @@ elif tabs == "Mirror Talk":
             with open(temp_audio_path, "wb") as f:
                 f.write(wav_audio_data)
             
-            # Step 2: Convert speech to text
+            # Step 2: Convert speech to text using Deepgram
             try:
-                original_text = process_speech_to_text(temp_audio_path)
-                if not original_text:
+                original_text = process_speech_to_text_deepgram(temp_audio_path)
+                if not original_text or original_text.startswith("["):
                     st.error("❌ Could not extract text from your recording. Please try again.")
                     st.stop()
                 
@@ -602,6 +615,33 @@ elif tabs == "Mirror Talk":
                     with col2:
                         st.markdown("**✨ Improved Version (Your Cloned Voice)**")
                         audio_bytes = open(output_file, "rb").read()
+                        
+                        # Auto-play functionality with HTML5 audio element
+                        if audio_bytes:
+                            # Convert audio content to base64 for HTML5 audio
+                            import base64
+                            audio_b64 = base64.b64encode(audio_bytes).decode()
+                            
+                            # Create HTML5 audio element with autoplay
+                            audio_html = f"""
+                            <audio autoplay style="display: none;">
+                            <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
+                            </audio>
+                            <script>
+                            // Force play the audio
+                            setTimeout(function() {{
+                                const audioElements = document.querySelectorAll('audio');
+                                const latestAudio = audioElements[audioElements.length - 1];
+                                if (latestAudio) {{
+                                    latestAudio.play().catch(e => console.log('Autoplay prevented:', e));
+                                }}
+                            }}, 500);
+                            </script>
+                            """
+                            
+                            st.markdown(audio_html, unsafe_allow_html=True)
+                            st.success("🔊 Auto-played with Speechify!")
+                        
                         st.audio(audio_bytes, format="audio/mp3")
                         st.download_button(
                             "⬇️ Download Improved Audio", 
@@ -668,18 +708,25 @@ elif tabs == "Mirror Talk":
         st.markdown("""
         **Mirror Talk** helps you improve your speech by:
         
-        1. **🎙️ Start Recording** - Begin capturing your speech
-        2. **🛑 Stop Recording** - Automatically saves and starts processing
-        3. **📝 Transcription** - Converts your speech to text using advanced AI
-        4. **✨ Grammar Correction** - Fixes grammar and improves clarity with Gintler AI
-        5. **🎵 Voice Cloning** - Generates the improved version using your cloned voice
-        6. **🔄 Compare** - Listen to both versions side-by-side
+        1. **🎙️ Record Your Speech** - Use the audio input above to record
+        2. **🤖 Automatic Processing** - Once recording is finished, the system automatically:
+           - **📝 Speech-to-Text** - Converts your speech using Deepgram AI
+           - **✨ Grammar Correction** - Fixes grammar with LanguageTool AI
+           - **🎵 Voice Generation** - Creates improved audio with Speechify
+           - **🔊 Auto-Play** - Plays the improved version automatically
+        3. **🔄 Compare & Download** - Listen to both versions and download the improved one
         
         **Best Practices:**
+        - Configure your Deepgram API key in the sidebar first
         - Speak clearly and at normal pace
-        - Use complete sentences
-        - Adjust settings in the Audio Settings section if needed
-        - Practice regularly to improve your natural speech patterns
+        - Use complete sentences for better grammar correction
+        - Adjust audio settings for different voice styles
+        
+        **New Features:**
+        - ✅ Now uses `st.audio_input` for better recording
+        - ✅ Deepgram integration for superior speech recognition
+        - ✅ Fully automatic workflow - no manual steps needed
+        - ✅ Auto-play functionality for instant feedback
         """)
     
     # Recent Sessions
