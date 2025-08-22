@@ -622,31 +622,9 @@ elif tabs == "Mirror Talk":
                         st.markdown("**✨ Improved Version (Your Cloned Voice)**")
                         audio_bytes = open(output_file, "rb").read()
                         
-                        # Auto-play functionality with HTML5 audio element
+                        # Auto-play notification (manual play required due to browser policies)
                         if audio_bytes:
-                            # Convert audio content to base64 for HTML5 audio
-                            import base64
-                            audio_b64 = base64.b64encode(audio_bytes).decode()
-                            
-                            # Create HTML5 audio element with autoplay
-                            audio_html = f"""
-                            <audio autoplay style="display: none;">
-                            <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
-                            </audio>
-                            <script>
-                            // Force play the audio
-                            setTimeout(function() {{
-                                const audioElements = document.querySelectorAll('audio');
-                                const latestAudio = audioElements[audioElements.length - 1];
-                                if (latestAudio) {{
-                                    latestAudio.play().catch(e => console.log('Autoplay prevented:', e));
-                                }}
-                            }}, 500);
-                            </script>
-                            """
-                            
-                            st.markdown(audio_html, unsafe_allow_html=True)
-                            st.success("🔊 Auto-played with Speechify!")
+                            st.info("🎵 **Audio generated successfully!** Click the play button below to hear your improved voice.")
                         
                         st.audio(audio_bytes, format="audio/mp3")
                         st.download_button(
@@ -803,7 +781,8 @@ elif tabs == "Manage Files":
                 st.metric("Total Size", f"{total_size / (1024*1024):.1f} MB")
             with col3:
                 today_sessions = [s for s in mirror_sessions if s[11].startswith(datetime.now().strftime("%Y-%m-%d"))]
-                st.metric("Today's Sessions", len(today_sessions))
+                today_date = datetime.now().strftime("%m/%d")
+                st.metric(f"📅 {today_date} Sessions", len(today_sessions))
             
             st.markdown("---")
             
@@ -827,7 +806,12 @@ elif tabs == "Manage Files":
                     col1, col2, col3 = st.columns([3, 1, 1])
                     with col1:
                         st.markdown(f"**{session_name}**")
-                        st.caption(f"Voice: {voice_name} | {created_at}")
+                        # Format date for better display
+                        try:
+                            formatted_date = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S").strftime("%m/%d %H:%M")
+                        except:
+                            formatted_date = created_at
+                        st.caption(f"Voice: {voice_name} | {formatted_date}")
                     with col2:
                         if generated_audio_path and os.path.exists(generated_audio_path):
                             file_size = os.path.getsize(generated_audio_path) / 1024  # KB
