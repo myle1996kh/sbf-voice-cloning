@@ -10,10 +10,18 @@ import base64
 def get_api_key_multi_source(key_name):
     """Get API key from multiple sources"""
     if key_name == "DEEPGRAM_API_KEY":
-        # Check Streamlit session state first, then environment variables
-        import streamlit as st
-        if hasattr(st, 'session_state') and 'deepgram_api_key' in st.session_state:
-            return st.session_state.deepgram_api_key
+        # Check Streamlit secrets first, then environment variables
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and 'api_keys' in st.secrets and 'deepgram' in st.secrets.api_keys:
+                api_key = st.secrets.api_keys.deepgram
+                # Don't return placeholder value
+                if api_key and api_key != "your_deepgram_api_key_here":
+                    return api_key
+        except:
+            pass
+        
+        # Fallback to environment variable
         return os.getenv("DEEPGRAM_API_KEY", None)
     return None
 

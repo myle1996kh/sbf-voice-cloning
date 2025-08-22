@@ -52,18 +52,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Deepgram API Key Configuration
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔑 API Configuration")
-deepgram_key = st.sidebar.text_input(
-    "Deepgram API Key", 
-    value=st.session_state.get('deepgram_api_key', ''),
-    type="password",
-    help="Enter your Deepgram API key for speech-to-text processing"
-)
-if deepgram_key:
-    st.session_state.deepgram_api_key = deepgram_key
-    st.sidebar.success("✅ Deepgram key configured")
+# API Configuration is now handled via .streamlit/secrets.toml
 
 # ----------------------------
 # 🧱 Tab 1: Upload / Record / Select Voice
@@ -717,7 +706,7 @@ elif tabs == "Mirror Talk":
         3. **🔄 Compare & Download** - Listen to both versions and download the improved one
         
         **Best Practices:**
-        - Configure your Deepgram API key in the sidebar first
+        - Configure your Deepgram API key in `.streamlit/secrets.toml` file
         - Speak clearly and at normal pace
         - Use complete sentences for better grammar correction
         - Adjust audio settings for different voice styles
