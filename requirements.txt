@@ -1,11 +1,6 @@
-streamlit
-requests
-streamlit-audiorec
-SpeechRecognition
-pydub
-pyaudio
-pocketsphinx
+streamlit>=1.28.0
+requests>=2.31.0
+pydub>=0.25.1
 youtube-transcript-api>=0.6.0
-beautifulsoup4 
-lxml
-openai-whisper
+beautifulsoup4>=4.12.0
+lxml>=4.9.0

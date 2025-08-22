@@ -1,4 +1,4 @@
-import speech_recognition as sr
+# Removed speech_recognition import - using Deepgram API instead
 import requests
 import json
 import tempfile
@@ -83,7 +83,7 @@ def process_speech_to_text_deepgram(audio_file_path):
 
 def process_speech_to_text(audio_file_path):
     """
-    Convert audio file to text using Google Speech Recognition.
+    Legacy function - now redirects to Deepgram for cloud compatibility.
     
     Args:
         audio_file_path (str): Path to the audio file (wav format)
@@ -91,52 +91,8 @@ def process_speech_to_text(audio_file_path):
     Returns:
         str: Transcribed text or None if failed
     """
-    recognizer = sr.Recognizer()
-    
-    try:
-        # Convert to wav if needed and ensure proper format
-        audio = AudioSegment.from_file(audio_file_path)
-        audio = audio.set_frame_rate(16000).set_channels(1)
-        
-        # Create temporary wav file
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
-            audio.export(temp_wav.name, format="wav")
-            temp_wav_path = temp_wav.name
-        
-        # Perform speech recognition
-        with sr.AudioFile(temp_wav_path) as source:
-            # Adjust for ambient noise
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            # Record the audio
-            audio_data = recognizer.record(source)
-        
-        # Try Google Speech Recognition first
-        try:
-            text = recognizer.recognize_google(audio_data, language='en-US')
-            return text
-        except sr.UnknownValueError:
-            print("Google Speech Recognition could not understand audio")
-            return None
-        except sr.RequestError as e:
-            print(f"Could not request results from Google Speech Recognition service; {e}")
-            # Fallback to offline recognition if available
-            try:
-                text = recognizer.recognize_sphinx(audio_data)
-                return text
-            except:
-                return None
-    
-    except Exception as e:
-        print(f"Error in speech-to-text conversion: {e}")
-        return None
-    
-    finally:
-        # Clean up temporary file
-        try:
-            if 'temp_wav_path' in locals():
-                os.unlink(temp_wav_path)
-        except:
-            pass
+    # Redirect to Deepgram for better cloud compatibility
+    return process_speech_to_text_deepgram(audio_file_path)
 
 def correct_grammar_with_gintler(text):
     """
