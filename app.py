@@ -556,7 +556,23 @@ elif tabs == "Mirror Talk":
             try:
                 original_text = process_speech_to_text_deepgram(temp_audio_path)
                 if not original_text or original_text.startswith("["):
-                    st.error("❌ Could not extract text from your recording. Please try again.")
+                    if "Speech-to-Text requires Deepgram API key" in original_text:
+                        st.error("🔑 **Deepgram API Key Required**")
+                        st.markdown("""
+                        **For Streamlit Cloud users:**
+                        1. Go to your [Streamlit Cloud dashboard](https://share.streamlit.io/)
+                        2. Find your app → Click ⚙️ Settings → Secrets tab
+                        3. Add this configuration:
+                        ```toml
+                        [api_keys]
+                        deepgram = "YOUR_ACTUAL_DEEPGRAM_API_KEY"
+                        ```
+                        4. Get a free API key at: https://console.deepgram.com/
+                        
+                        **For local development:** Update `.streamlit/secrets.toml` with your API key.
+                        """)
+                    else:
+                        st.error("❌ Could not extract text from your recording. Please try again.")
                     st.stop()
                 
             except Exception as e:
