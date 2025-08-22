@@ -42,3 +42,13 @@ def get_transcript_by_id(transcript_id):
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else None
+
+def delete_transcript(transcript_id):
+    """Delete a transcript by ID."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM transcripts WHERE id = ?", (transcript_id,))
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted

@@ -2,7 +2,7 @@ import streamlit as st
 from utils.speechify_api import generate_audio_with_params, EMOTION_OPTIONS, generate_demo_audio
 from utils.voice_utils import init_voice_db, get_voice_id, save_voice_to_db, load_all_voice_ids
 from utils.yt_utils import get_youtube_transcript, extract_video_id
-from utils.transcript_db import init_transcript_db, save_transcript, load_all_transcripts, get_transcript_by_id
+from utils.transcript_db import init_transcript_db, save_transcript, load_all_transcripts, get_transcript_by_id, delete_transcript
 from utils.nlp_processor import process_speech_to_text, process_speech_to_text_deepgram, correct_grammar_with_gintler
 from utils.mirror_talk_db import (
     init_mirror_talk_db, save_mirror_talk_session, load_all_mirror_talk_sessions,
