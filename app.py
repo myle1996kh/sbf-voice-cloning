@@ -52,7 +52,7 @@ st.sidebar.image("assests/logo.png", width=180)
 st.sidebar.markdown("<h2 style='text-align:left; font-size: 22px;'>🧭 SOUND-BASED FOUNDATION</h2>", unsafe_allow_html=True)
 tabs = st.sidebar.radio(
     "Navigation",
-    ["Voice Setup", "Transcript", "Generate Podcast", "Mirror Talk", "Manage Files"],
+    ["Voice Setup", "Transcript", "Generate Podcast", "Mirror Talk", "Manage Files", "🔧 Debug"],
     label_visibility="collapsed",
     key="main_tabs"
 )
@@ -994,3 +994,140 @@ elif tabs == "Manage Files":
                                         st.error("Failed to delete")
                         
                         st.markdown("---")
+
+# ----------------------------
+# 🧱 Tab 6: Debug Tab - TEMPORARY FOR TROUBLESHOOTING  
+# ----------------------------
+elif tabs == "🔧 Debug":
+    st.header("🔧 Cloud Environment Debugger")
+    st.markdown("*This tool helps identify configuration issues in cloud deployments*")
+    
+    # Environment Information
+    with st.expander("🌍 Environment Information", expanded=True):
+        st.markdown("**Python Version:**")
+        st.code(f"{sys.version}")
+        
+        st.markdown("**Platform:**")
+        st.code(f"{sys.platform}")
+        
+        st.markdown("**Current Working Directory:**")
+        st.code(f"{os.getcwd()}")
+    
+    # Streamlit Secrets Debug
+    with st.expander("🔑 Streamlit Secrets Debug", expanded=True):
+        st.markdown("**Checking st.secrets availability:**")
+        
+        try:
+            if hasattr(st, 'secrets'):
+                st.success("✅ st.secrets is available")
+                
+                # Check if api_keys section exists
+                if 'api_keys' in st.secrets:
+                    st.success("✅ [api_keys] section found")
+                    
+                    # Check deepgram key
+                    if 'deepgram' in st.secrets.api_keys:
+                        deepgram_key = st.secrets.api_keys.deepgram
+                        if deepgram_key == "your_deepgram_api_key_here":
+                            st.error("❌ Deepgram key is placeholder value")
+                        elif len(deepgram_key) > 10:
+                            st.success(f"✅ Deepgram key found: {deepgram_key[:8]}...{deepgram_key[-4:]}")
+                        else:
+                            st.warning(f"⚠️ Deepgram key seems short: '{deepgram_key}'")
+                    else:
+                        st.error("❌ 'deepgram' key not found in api_keys")
+                        st.info("Available keys in api_keys:")
+                        for key in st.secrets.api_keys.keys():
+                            st.code(f"- {key}")
+                else:
+                    st.error("❌ [api_keys] section not found in secrets")
+                    st.info("Available sections in secrets:")
+                    try:
+                        for section in st.secrets.keys():
+                            st.code(f"- {section}")
+                    except:
+                        st.code("Cannot enumerate secrets sections")
+                        
+            else:
+                st.error("❌ st.secrets is not available")
+                
+        except Exception as e:
+            st.error(f"💥 Error accessing secrets: {e}")
+    
+    # API Key Resolution Test
+    with st.expander("🧪 API Key Resolution Test", expanded=True):
+        st.markdown("**Testing the actual API key resolution function:**")
+        
+        try:
+            from utils.nlp_processor import get_api_key_multi_source
+            
+            st.markdown("**Running get_api_key_multi_source('DEEPGRAM_API_KEY'):**")
+            
+            # Capture the result
+            api_key = get_api_key_multi_source("DEEPGRAM_API_KEY")
+            
+            if api_key:
+                if api_key == "your_deepgram_api_key_here":
+                    st.error("❌ Function returned placeholder value")
+                else:
+                    st.success(f"✅ Function returned valid key: {api_key[:8]}...{api_key[-4:]}")
+            else:
+                st.error("❌ Function returned None/empty")
+                
+        except ImportError as e:
+            st.error(f"💥 Import error: {e}")
+        except Exception as e:
+            st.error(f"💥 Execution error: {e}")
+    
+    # Deepgram API Test
+    with st.expander("🎤 Deepgram API Connection Test"):
+        st.markdown("**Testing actual Deepgram API connection:**")
+        
+        if st.button("🧪 Test Deepgram Connection"):
+            try:
+                from utils.nlp_processor import DeepgramVoice
+                
+                deepgram = DeepgramVoice()
+                api_key = deepgram.get_current_api_key()
+                
+                if not api_key:
+                    st.error("❌ DeepgramVoice could not get API key")
+                elif api_key == "your_deepgram_api_key_here":
+                    st.error("❌ DeepgramVoice got placeholder API key")
+                else:
+                    st.success(f"✅ DeepgramVoice has valid API key: {api_key[:8]}...{api_key[-4:]}")
+                    
+                    # Test actual API call
+                    st.info("🌐 Testing API endpoint...")
+                    import requests
+                    
+                    headers = {"Authorization": f"Token {api_key}"}
+                    response = requests.get("https://api.deepgram.com/v1/projects", headers=headers, timeout=10)
+                    
+                    if response.status_code == 200:
+                        st.success("✅ Deepgram API connection successful!")
+                    else:
+                        st.error(f"❌ Deepgram API error: {response.status_code} - {response.text}")
+                        
+            except Exception as e:
+                st.error(f"💥 Deepgram test error: {e}")
+    
+    st.markdown("---")
+    st.subheader("📋 Next Steps")
+    
+    st.info("""
+    **If you see errors above:**
+    
+    1. **API Key Issues:** Make sure your Streamlit Cloud secrets are configured exactly as:
+    ```
+    [api_keys]
+    deepgram = "53e5bd9532e7084b6d0f49373cff9f7195e155b7"
+    speechify = "W1vp8RVy2tnAw0GEj0NPqRszlWIXCfiDyLR5qOsY1rw="
+    ```
+    
+    2. **Deployment Issues:** Check your Streamlit Cloud logs for deployment errors
+    
+    3. **Code Issues:** Make sure the latest code is deployed (check commit hash)
+    
+    4. **Cache Issues:** Try restarting your Streamlit Cloud app
+    """)
