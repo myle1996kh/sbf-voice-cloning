@@ -124,10 +124,10 @@ if tabs == "Voice Setup":
         wav_audio_data = st.audio_input("Record your voice", key="voice_setup_audio")
 
         if wav_audio_data is not None:
-            st.audio(wav_audio_data, format='audio/wav')
+            st.audio(wav_audio_data)
             temp_audio_path = os.path.join("output", "recorded_voice.wav")
             with open(temp_audio_path, "wb") as f:
-                f.write(wav_audio_data)
+                f.write(wav_audio_data.getvalue())
 
             if st.button("🎯 Create Voice from Recording") and name:
                 with st.spinner("Creating voice from recording..."):
@@ -534,7 +534,7 @@ elif tabs == "Mirror Talk":
 
     if wav_audio_data is not None:
         # Show the recorded audio
-        st.audio(wav_audio_data, format='audio/wav')
+        st.audio(wav_audio_data)
         
         # Auto-trigger processing immediately when recording stops
         # Generate timestamp for this session
@@ -544,7 +544,7 @@ elif tabs == "Mirror Talk":
             # Step 1: Save recorded audio with unique filename
             temp_audio_path = os.path.join("output", f"mirror_original_{timestamp}.wav")
             with open(temp_audio_path, "wb") as f:
-                f.write(wav_audio_data)
+                f.write(wav_audio_data.getvalue())
             
             # Step 2: Convert speech to text using Deepgram
             try:
@@ -610,7 +610,7 @@ elif tabs == "Mirror Talk":
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**🎤 Your Original Recording**")
-                        st.audio(wav_audio_data, format='audio/wav')
+                        st.audio(wav_audio_data)
                     
                     with col2:
                         st.markdown("**✨ Improved Version (Your Cloned Voice)**")
