@@ -3,9 +3,10 @@ import requests
 import json
 import tempfile
 import os
-from pydub import AudioSegment
 import io
 import base64
+
+# Note: pydub/AudioSegment removed as it's not used in this module
 
 def get_api_key_multi_source(key_name):
     """Get API key from multiple sources"""
